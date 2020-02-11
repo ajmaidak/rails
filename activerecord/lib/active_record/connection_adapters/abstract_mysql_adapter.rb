@@ -706,16 +706,17 @@ module ActiveRecord
           if sql_mode = variables.delete("sql_mode")
             sql_mode = quote(sql_mode)
           elsif !defaults.include?(strict_mode?)
+            modes = execute("SELECT @@sql_mode").first.split
             if strict_mode?
-              sql_mode = "CONCAT(@@sql_mode, ',STRICT_ALL_TABLES')"
+              modes.append('STRICT_ALL_TABLES')
             else
-              sql_mode = "REPLACE(@@sql_mode, 'STRICT_TRANS_TABLES', '')"
-              sql_mode = "REPLACE(#{sql_mode}, 'STRICT_ALL_TABLES', '')"
-              sql_mode = "REPLACE(#{sql_mode}, 'TRADITIONAL', '')"
+              modes.delete('STRICT_TRANS_TABLES')
+              modes.delete('STRICT_ALL_TABLES')
+              modes.delete('TRADITIONAL')
             end
-            sql_mode = "CONCAT(#{sql_mode}, ',NO_AUTO_VALUE_ON_ZERO')"
+            modes.append 'NO_AUTO_VALUE_ON_ZERO'
           end
-          sql_mode_assignment = "@@SESSION.sql_mode = #{sql_mode}, " if sql_mode
+          sql_mode_assignment = "@@SESSION.sql_mode = #{quote(modes.join(','))}, " if sql_mode
 
           # NAMES does not have an equals sign, see
           # https://dev.mysql.com/doc/refman/en/set-names.html
